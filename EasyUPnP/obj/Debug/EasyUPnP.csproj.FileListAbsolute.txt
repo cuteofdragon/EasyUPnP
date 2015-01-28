@@ -1,0 +1,17 @@
+D:\development\EasyUPnP\trunk\EasyUPnP\bin\Debug\EasyUPnP.dll
+D:\development\EasyUPnP\trunk\EasyUPnP\bin\Debug\EasyUPnP.pdb
+D:\development\EasyUPnP\trunk\EasyUPnP\bin\Debug\EasyUPnP.pri
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\EasyUPnP.csprojResolveAssemblyReference.cache
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\EasyUPnP.dll
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\EasyUPnP.pdb
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\priconfig.xml
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\priconfig.xml.intermediate
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\layout.resfiles
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\layout.resfiles.intermediate
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\resources.resfiles
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\resources.resfiles.intermediate
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\pri.resfiles
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\pri.resfiles.intermediate
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\qualifiers.txt
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\qualifiers.txt.intermediate
+D:\development\EasyUPnP\trunk\EasyUPnP\obj\Debug\MultipleQualifiersPerDimensionFound.txt
