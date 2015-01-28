@@ -2,6 +2,7 @@
 using System;
 using System.Threading;
 using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
@@ -26,15 +27,13 @@ namespace Sample
         {
             try
             {
-                listMediaServers.Items.Clear();
-
+                btnStartDiscovery.IsEnabled = false;
                 _upnpService = new UPnPService();
                 _upnpService.OnMediaServerFound += _upnpService_OnMediaServerFound;
                 _upnpService.OnUPnPDiscoveryCompleted += _upnpService_OnUPnPDiscoveryCompleted;
                 await _upnpService.AddOnlineMediaServerAsync(new Uri("http://easysoft.hu/home/index.php?host_id=meehi&port=9000"), new CancellationToken());
-                //await _upnpService.AddOnlineMediaServerAsync(new Uri("http://yourexternalip.com:9000"), new CancellationToken());
+                //await _upnpService.AddOnlineMediaServerAsync(new Uri("http://your-external-ip.org:9000"), new CancellationToken());  //the way you can add your own online media server over internet
                 Notify("UPnP discovery started...", Colors.Green);
-                btnStartDiscovery.IsEnabled = false;
                 await _upnpService.StartUPnPDiscoveryAsync();
             }
             catch (Exception ex)
@@ -50,9 +49,12 @@ namespace Sample
             btnStartDiscovery.IsEnabled = true;
         }
 
-        private void _upnpService_OnMediaServerFound(object sender, UPnPService.MediaServerFoundEventArgs e)
+        private async void _upnpService_OnMediaServerFound(object sender, UPnPService.MediaServerFoundEventArgs e)
         {
-            listMediaServers.DataContext = _upnpService.MediaServers;
+            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, delegate
+            {
+                listMediaServers.ItemsSource = _upnpService.MediaServers;
+            });
         }
 
         private void Notify(string message, Color color)
