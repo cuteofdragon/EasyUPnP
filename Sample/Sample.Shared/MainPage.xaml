@@ -16,6 +16,17 @@
 
         <TextBlock x:Name="txtNotify" Visibility="Collapsed" Margin="0,40,0,0" Grid.Row="0"></TextBlock>
         <Button x:Name="btnStartDiscovery" Click="btnStartDiscovery_Click" Grid.Row="1">Start discovery</Button>
-        <ListBox x:Name="listMediaServers" Grid.Row="2"></ListBox>
+        <ListBox x:Name="listMediaServers" Grid.Row="2"
+                 ItemsSource="{Binding}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Vertical">
+                        <Image Source="{Binding IconUrl}" Stretch="Uniform" MaxWidth="100"></Image>
+                        <TextBlock Text="{Binding FriendlyName}"></TextBlock>
+                        <TextBlock Text="{Binding PresentationURL}"></TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </Page>
