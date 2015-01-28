@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Networking;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
+using Windows.UI.Xaml;
 
 namespace EasyUPnP
 {
@@ -12,6 +14,13 @@ namespace EasyUPnP
     {
         #region Events
 
+        public event EventHandler<UPnPDiscoveryCompletedEventArgs> OnUPnPDiscoveryCompleted;
+        public class UPnPDiscoveryCompletedEventArgs : EventArgs
+        {
+            public UPnPDiscoveryCompletedEventArgs()
+            {
+            }
+        }
         public event EventHandler<MediaServerFoundEventArgs> OnMediaServerFound;
         public class MediaServerFoundEventArgs : EventArgs
         {
@@ -25,9 +34,19 @@ namespace EasyUPnP
 
         #endregion
 
+        #region Private constants
+
+        private const int UPNP_TIMEOUT = 10;  //seconds
+
+        #endregion
+
         #region Private variables
 
         private Dictionary<string, MediaServer> _mediaServers = new Dictionary<string, MediaServer>();
+        private DatagramSocket _socket;
+        private DispatcherTimer _upnpListener;
+        private DateTime _upnpDiscoveryStart;
+        private DateTime _upnpLastMessageReceived;
 
         #endregion
 
@@ -39,17 +58,32 @@ namespace EasyUPnP
 
         #endregion
 
+        #region Public properties
+
+        public ObservableCollection<MediaServer> MediaServers
+        {
+            get
+            {
+                ObservableCollection<MediaServer> result = new ObservableCollection<MediaServer>();
+                foreach (MediaServer mediaServer in _mediaServers.Values)
+                    result.Add(mediaServer);
+
+                return result;
+            }
+        }
+
+        #endregion
+
         #region Public functions
 
         public async Task StartUPnPDiscoveryAsync()
         {
             try
             {
-                DatagramSocket socket = new DatagramSocket();
+                _socket = new DatagramSocket();
+                _socket.MessageReceived += _socket_MessageReceived;
 
-                socket.MessageReceived += socket_MessageReceived;
-
-                IOutputStream stream = await socket.GetOutputStreamAsync(new HostName("239.255.255.250"), "1900");
+                IOutputStream stream = await _socket.GetOutputStreamAsync(new HostName("239.255.255.250"), "1900");
                 const string message = "M-SEARCH * HTTP/1.1\r\n" +
                                        "HOST: 239.255.255.250:1900\r\n" +
                                        "ST:upnp:rootdevice\r\n" +
@@ -58,10 +92,20 @@ namespace EasyUPnP
 
                 var writer = new DataWriter(stream) { UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8 };
                 writer.WriteString(message);
+
+                _upnpDiscoveryStart = DateTime.Now;
+                _upnpListener = new DispatcherTimer();
+                _upnpListener.Interval = new TimeSpan(0, 0, 1);  //1 second
+                _upnpListener.Tick += _upnpListener_Tick;
+                _upnpListener.Start();
+
                 await writer.StoreAsync();
+                await stream.FlushAsync();
+                stream.Dispose();
             }
-            catch
+            catch (Exception ex)
             {
+                throw new Exception(ex.Message);
             }
         }
 
@@ -88,10 +132,36 @@ namespace EasyUPnP
 
         #region Private functions
 
-        private async void socket_MessageReceived(DatagramSocket sender, DatagramSocketMessageReceivedEventArgs args)
+        private void _upnpListener_Tick(object sender, object e)
+        {
+            bool UPnPDiscoveryCompleted = false;
+            if (_upnpLastMessageReceived != null)
+            {
+                if ((DateTime.Now - _upnpDiscoveryStart).TotalSeconds > UPNP_TIMEOUT)
+                    UPnPDiscoveryCompleted = true;
+            }
+            else
+            {
+                if ((DateTime.Now - _upnpDiscoveryStart).TotalSeconds > UPNP_TIMEOUT)
+                    UPnPDiscoveryCompleted = false;
+            }
+
+            if (UPnPDiscoveryCompleted)
+            {
+                _upnpListener.Stop();
+                if (_socket != null)
+                    _socket.Dispose();
+                if (OnUPnPDiscoveryCompleted != null)
+                    OnUPnPDiscoveryCompleted(sender, null);
+            }
+        }
+        
+        private async void _socket_MessageReceived(DatagramSocket sender, DatagramSocketMessageReceivedEventArgs args)
         {
             try
             {
+                _upnpLastMessageReceived = DateTime.Now;
+
                 DataReader reader = args.GetDataReader();
 
                 uint count = reader.UnconsumedBufferLength;
@@ -158,9 +228,10 @@ namespace EasyUPnP
                 if (_mediaServers.ContainsKey(deviceDescriptionUrl.AbsoluteUri))
                     return;
 
+                _mediaServers.Add(deviceDescriptionUrl.AbsoluteUri, null);
                 MediaServer mediaServer = new MediaServer(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
                 await mediaServer.InitAsync();
-                _mediaServers.Add(deviceDescriptionUrl.AbsoluteUri, mediaServer);
+                _mediaServers[deviceDescriptionUrl.AbsoluteUri] = mediaServer;
 
                 if (OnMediaServerFound != null)
                     OnMediaServerFound(this, new MediaServerFoundEventArgs(mediaServer));
