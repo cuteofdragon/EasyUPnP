@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 
-namespace EasyUPnP
+namespace EasyUPnP.Utils
 {
-    public static class Deserializer
+    static class Deserializer
     {
         internal static async Task<T> DeserializeXmlAsync<T>(Uri url)
         {

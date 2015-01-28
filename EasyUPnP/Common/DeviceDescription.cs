@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Xml.Serialization;
 using Windows.Data.Xml.Dom;
 
-namespace EasyUPnP
+namespace EasyUPnP.Common
 {
     [XmlRoot("root", Namespace = "urn:schemas-upnp-org:device-1-0")]
     public class DeviceDescription

@@ -1,4 +1,7 @@
-﻿using System;
+﻿using EasyUPnP.Common;
+using EasyUPnP.Server;
+using EasyUPnP.Utils;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
@@ -78,35 +81,28 @@ namespace EasyUPnP
 
         public async Task StartUPnPDiscoveryAsync()
         {
-            try
-            {
-                _socket = new DatagramSocket();
-                _socket.MessageReceived += _socket_MessageReceived;
+            _socket = new DatagramSocket();
+            _socket.MessageReceived += _socket_MessageReceived;
 
-                IOutputStream stream = await _socket.GetOutputStreamAsync(new HostName("239.255.255.250"), "1900");
-                const string message = "M-SEARCH * HTTP/1.1\r\n" +
-                                       "HOST: 239.255.255.250:1900\r\n" +
-                                       "ST:upnp:rootdevice\r\n" +
-                                       "MAN:\"ssdp:discover\"\r\n" +
-                                       "MX:3\r\n\r\n";
+            IOutputStream stream = await _socket.GetOutputStreamAsync(new HostName("239.255.255.250"), "1900");
+            const string message = "M-SEARCH * HTTP/1.1\r\n" +
+                                   "HOST: 239.255.255.250:1900\r\n" +
+                                   "ST:upnp:rootdevice\r\n" +
+                                   "MAN:\"ssdp:discover\"\r\n" +
+                                   "MX:3\r\n\r\n";
 
-                var writer = new DataWriter(stream) { UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8 };
-                writer.WriteString(message);
+            var writer = new DataWriter(stream) { UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8 };
+            writer.WriteString(message);
 
-                _upnpDiscoveryStart = DateTime.Now;
-                _upnpListener = new DispatcherTimer();
-                _upnpListener.Interval = new TimeSpan(0, 0, 1);  //1 second
-                _upnpListener.Tick += _upnpListener_Tick;
-                _upnpListener.Start();
+            _upnpDiscoveryStart = DateTime.Now;
+            _upnpListener = new DispatcherTimer();
+            _upnpListener.Interval = new TimeSpan(0, 0, 1);  //1 second
+            _upnpListener.Tick += _upnpListener_Tick;
+            _upnpListener.Start();
 
-                await writer.StoreAsync();
-                await stream.FlushAsync();
-                stream.Dispose();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
+            await writer.StoreAsync();
+            await stream.FlushAsync();
+            stream.Dispose();
         }
 
         public async Task AddOnlineMediaServerAsync(Uri url, CancellationToken ct)
@@ -195,43 +191,40 @@ namespace EasyUPnP
                 aliasUrl = new Uri(aliasUrl.AbsoluteUri + UseSlash(aliasUrl.AbsoluteUri));
                 deviceDescriptionUrl = await DetectDeviceDescriptionUrlAsync(aliasUrl);
             }
+            if (deviceDescriptionUrl == null)
+                throw new Exception("Unsopported device: " + aliasUrl.AbsoluteUri);
 
             DeviceDescription deviceDescription = null;
-            if (deviceDescriptionUrl != null)
+            deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
+            if (deviceDescription != null)
             {
-                deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
-                if (deviceDescription != null)
+                switch (deviceDescription.Device.DeviceTypeText)
                 {
-                    switch (deviceDescription.Device.DeviceTypeText)
-                    {
-                        case DeviceTypes.MEDIASERVER:
-                            await AddMediaServerAsync(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
-                            break;
-                        case DeviceTypes.INTERNET_GATEWAY_DEVICE:
-                            //await AddInternetGateWayDeviceAsync();
-                            break;
-                        default:
-                            //await AddOtherDeviceAsync();
-                            break;
-                    }
+                    case DeviceTypes.MEDIASERVER:
+                        await AddMediaServerAsync(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
+                        break;
+                    case DeviceTypes.INTERNET_GATEWAY_DEVICE:
+                        //await AddInternetGateWayDeviceAsync();
+                        break;
+                    default:
+                        //await AddOtherDeviceAsync();
+                        break;
                 }
             }
-
-            if (deviceDescription == null)
-                await AddMediaServerAsync(null, aliasUrl, null, is_online_media_server);
         }
 
         private async Task AddMediaServerAsync(DeviceDescription deviceDescription, Uri aliasUrl, Uri deviceDescriptionUrl, bool is_online_media_server)
         {
             try
             {
-                if (_mediaServers.ContainsKey(deviceDescriptionUrl.AbsoluteUri))
+                string url = deviceDescription != null ? deviceDescriptionUrl.AbsoluteUri : aliasUrl.AbsoluteUri;
+                if (_mediaServers.ContainsKey(url))
                     return;
 
-                _mediaServers.Add(deviceDescriptionUrl.AbsoluteUri, null);
+                _mediaServers.Add(url, null);
                 MediaServer mediaServer = new MediaServer(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
                 await mediaServer.InitAsync();
-                _mediaServers[deviceDescriptionUrl.AbsoluteUri] = mediaServer;
+                _mediaServers[url] = mediaServer;
 
                 if (OnMediaServerFound != null)
                     OnMediaServerFound(this, new MediaServerFoundEventArgs(mediaServer));

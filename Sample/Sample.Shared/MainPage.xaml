@@ -21,9 +21,10 @@
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Vertical">
-                        <Image Source="{Binding IconUrl}" Stretch="Uniform" MaxWidth="100"></Image>
+                        <Image Source="{Binding DefaultIconUrl}" Stretch="Uniform" MaxWidth="100"></Image>
                         <TextBlock Text="{Binding FriendlyName}"></TextBlock>
                         <TextBlock Text="{Binding PresentationURL}"></TextBlock>
+                        <TextBlock Text="{Binding AliasURL}"></TextBlock>
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>

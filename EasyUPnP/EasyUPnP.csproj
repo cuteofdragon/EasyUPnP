@@ -41,19 +41,19 @@
     <TargetPlatform Include="Windows, Version=8.1" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes.cs" />
+    <Compile Include="Common\Classes.cs" />
     <Compile Include="Common\ConnectionManager.cs" />
     <Compile Include="Common\ContentDirectory.cs" />
     <Compile Include="Common\DeviceDescription.cs" />
     <Compile Include="Common\DIDLLite.cs" />
     <Compile Include="Common\MediaReceiverRegistrar.cs" />
     <Compile Include="Common\Service.cs" />
-    <Compile Include="Content.cs" />
-    <Compile Include="Deserializer.cs" />
-    <Compile Include="MediaServer.cs" />
+    <Compile Include="Server\Content.cs" />
+    <Compile Include="Utils\Deserializer.cs" />
+    <Compile Include="Server\MediaServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Request.cs" />
-    <Compile Include="SupportedOnlineDevices.cs" />
+    <Compile Include="Utils\Request.cs" />
+    <Compile Include="Server\SupportedOnlineDevices.cs" />
     <Compile Include="UPnPService.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Portable\$(TargetFrameworkVersion)\Microsoft.Portable.CSharp.targets" />

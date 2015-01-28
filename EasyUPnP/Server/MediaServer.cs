@@ -1,8 +1,10 @@
-﻿using System;
+﻿using EasyUPnP.Common;
+using EasyUPnP.Utils;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace EasyUPnP
+namespace EasyUPnP.Server
 {
     public class MediaServer
     {
@@ -57,16 +59,6 @@ namespace EasyUPnP
 
         public MediaServer(DeviceDescription deviceDescription, Uri aliasUrl, Uri deviceDescriptionUrl, bool is_online_media_server)
         {
-            if (deviceDescription == null)
-            {
-                this.AliasURL = aliasUrl.AbsoluteUri;
-                this.FriendlyName = "NOT SUPPORTED";
-                this.ConnectionUrl = "Resources/online_server.png";
-                this.IconUrl = "Resources/not_supported.png";
-                this.OnlineServer = is_online_media_server;
-                return;
-            }
-
             this.DeviceDescription = deviceDescription;
             this.FriendlyName = this.DeviceDescription.Device.FriendlyName;
             this.UDN = this.DeviceDescription.Device.UDN;
@@ -79,7 +71,6 @@ namespace EasyUPnP
                 if (this.PresentationURL.IndexOf("http://") == -1)
                     this.PresentationURL = "http://" + this.PresentationURL;
                 this.PresentationURL = this.PresentationURL + UPnPService.UseSlash(this.PresentationURL);
-                this.ConnectionUrl = "Resources/online_server.png";
             }
             else
             {
@@ -90,7 +81,6 @@ namespace EasyUPnP
                         this.DeviceDescription.Device.PresentationURL = "http://" + this.DeviceDescription.Device.PresentationURL;
                 }
                 this.PresentationURL = this.DeviceDescription.Device.PresentationURL + UPnPService.UseSlash(this.DeviceDescription.Device.PresentationURL);
-                this.ConnectionUrl = "Resources/intranet_server.png";
             }
         }
 
@@ -98,9 +88,8 @@ namespace EasyUPnP
         public string AliasURL { get; private set; }
         public string FriendlyName { get; private set; }
         public string PresentationURL { get; private set; }
-        public string IconUrl { get; private set; }
+        public string DefaultIconUrl { get; private set; }
         public bool OnlineServer { get; private set; }
-        public string ConnectionUrl { get; private set; }
         public MediaServer Self { get; private set; }
 
         public DeviceDescription DeviceDescription { get; private set; }
@@ -109,16 +98,13 @@ namespace EasyUPnP
         public MediaReceiverRegistrar MediaReceiverRegistrar { get; private set; }
         public Uri ContentDirectoryControlUrl { get; private set; }
         
-        private Action _browseAction;
+        private ServiceAction _browseAction;
         private Dictionary<string, Content> _contents = new Dictionary<string,Content>();
 
         #region Public functions
 
         public async Task InitAsync()
         {
-            if (this.DeviceDescription == null)
-                return;
-
             foreach (Service serv in this.DeviceDescription.Device.ServiceList)
                 switch (serv.ServiceType)
                 {
@@ -278,17 +264,17 @@ namespace EasyUPnP
                     {
                         if (ic.MimeType.IndexOf("png") > -1)
                         {
-                            this.IconUrl = ic.Url;
+                            this.DefaultIconUrl = ic.Url;
                         }
                     }
-                    if (string.IsNullOrEmpty(this.IconUrl) && (iconList != null))
-                        this.IconUrl = iconList[0].Url;
+                    if (string.IsNullOrEmpty(this.DefaultIconUrl) && (iconList != null))
+                        this.DefaultIconUrl = iconList[0].Url;
 
-                    if (!string.IsNullOrEmpty(this.IconUrl))
+                    if (!string.IsNullOrEmpty(this.DefaultIconUrl))
                     {
-                        if (this.IconUrl.Substring(0, 1) == "/")
-                            this.IconUrl = this.IconUrl.Substring(1);
-                        this.IconUrl = this.PresentationURL + this.IconUrl;
+                        if (this.DefaultIconUrl.Substring(0, 1) == "/")
+                            this.DefaultIconUrl = this.DefaultIconUrl.Substring(1);
+                        this.DefaultIconUrl = this.PresentationURL + this.DefaultIconUrl;
                     }
                 }
             }
@@ -297,11 +283,11 @@ namespace EasyUPnP
             }
         }
 
-        private Action FindBrowseAction()
+        private ServiceAction FindBrowseAction()
         {
             if (this.ContentDirectory != null)
             {
-                foreach (Action act in this.ContentDirectory.ActionList)
+                foreach (ServiceAction act in this.ContentDirectory.ActionList)
                 {
                     if (act.Name.ToUpper() == "BROWSE")
                     {

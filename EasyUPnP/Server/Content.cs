@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using EasyUPnP.Common;
+using System;
 using System.Collections.ObjectModel;
-using System.Text;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 
-namespace EasyUPnP
+namespace EasyUPnP.Server
 {
     public class Content
     {

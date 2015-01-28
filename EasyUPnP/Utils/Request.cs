@@ -5,9 +5,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyUPnP
+namespace EasyUPnP.Utils
 {
-    public static class Request
+    static class Request
     {
         internal static async Task<Uri> RequestUriAsync(Uri url)
         {

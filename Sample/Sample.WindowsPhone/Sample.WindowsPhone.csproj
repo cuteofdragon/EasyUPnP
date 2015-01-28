@@ -96,7 +96,8 @@
     <Content Include="Assets\WideLogo.scale-240.png" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="EasyUPnP">
+    <Reference Include="EasyUPnP, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\EasyUPnP\bin\Debug\EasyUPnP.dll</HintPath>
     </Reference>
   </ItemGroup>

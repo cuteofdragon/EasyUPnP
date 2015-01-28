@@ -1,13 +1,13 @@
 ﻿
-namespace EasyUPnP
+namespace EasyUPnP.Common
 {
-    public static class DeviceTypes
+    static class DeviceTypes
     {
         public const string MEDIASERVER = "urn:schemas-upnp-org:device:MediaServer:1";
         public const string INTERNET_GATEWAY_DEVICE = "urn:schemas-upnp-org:device:InternetGatewayDevice:1";
     }
     
-    public static class ServiceTypes
+    static class ServiceTypes
     {
         public const string CONNECTIONMANAGER = "urn:schemas-upnp-org:service:ConnectionManager:1";
         public const string CONTENTDIRECTORY = "urn:schemas-upnp-org:service:ContentDirectory:1";

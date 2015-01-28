@@ -9,7 +9,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using Windows.Data.Xml.Dom;
 
-namespace EasyUPnP
+namespace EasyUPnP.Common
 {
     [XmlRoot("scpd", Namespace = "urn:schemas-upnp-org:service-1-0")]
     public class Services
@@ -22,15 +22,15 @@ namespace EasyUPnP
         public SpecVersionType SpecVersion { get; set; }
         [XmlArray("actionList")]
         [XmlArrayItem("action")]
-        public Action[] ActionList { get; set; }
+        public ServiceAction[] ActionList { get; set; }
         [XmlArray("serviceStateTable")]
         [XmlArrayItem("stateVariable")]
         public StateVariable[] ServiceStateTable { get; set; }
     }
 
-    public partial class Action
+    public partial class ServiceAction
     {
-        public Action()
+        public ServiceAction()
         {
         }
 
