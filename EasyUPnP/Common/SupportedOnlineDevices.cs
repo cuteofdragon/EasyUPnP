@@ -1,5 +1,5 @@
 ﻿
-namespace EasyUPnP.Server
+namespace EasyUPnP.Common
 {
     public static class SupportedOnlineDevices
     {

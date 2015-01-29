@@ -1,5 +1,6 @@
 ﻿using EasyUPnP;
 using System;
+using System.Collections.ObjectModel;
 using System.Threading;
 using Windows.UI;
 using Windows.UI.Core;
@@ -16,7 +17,16 @@ namespace Sample
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        public class BindingClass
+        {
+            public string DefaultIconUrl { get; set; }
+            public string FriendlyName { get; set; }
+            public string PresentationURL { get; set; }
+            public string AliasURL { get; set; }
+        }
+
         private UPnPService _upnpService;
+        private ObservableCollection<BindingClass> _bindingClass;
 
         public MainPage()
         {
@@ -27,13 +37,18 @@ namespace Sample
         {
             try
             {
+                _bindingClass = new ObservableCollection<BindingClass>();
+                listMediaServers.ItemsSource = _bindingClass;
                 btnStartDiscovery.IsEnabled = false;
+                Notify("UPnP discovery started...", Colors.Green);
+
                 _upnpService = new UPnPService();
                 _upnpService.OnMediaServerFound += _upnpService_OnMediaServerFound;
+                _upnpService.OnMediaRendererFound += _upnpService_OnMediaRendererFound;
+                _upnpService.OnOtherDeviceFound += _upnpService_OnOtherDeviceFound;
                 _upnpService.OnUPnPDiscoveryCompleted += _upnpService_OnUPnPDiscoveryCompleted;
-                await _upnpService.AddOnlineMediaServerAsync(new Uri("http://easysoft.hu/home/index.php?host_id=meehi&port=9000"), new CancellationToken());
-                //await _upnpService.AddOnlineMediaServerAsync(new Uri("http://your-external-ip.org:9000"), new CancellationToken());  //the way you can add your own online media server over internet
-                Notify("UPnP discovery started...", Colors.Green);
+
+                //await _upnpService.AddOnlineMediaServerAsync(new Uri("http://your-external-ip.org:9000"));  //the way you can add your own online media server over internet
                 await _upnpService.StartUPnPDiscoveryAsync();
             }
             catch (Exception ex)
@@ -53,7 +68,36 @@ namespace Sample
         {
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, delegate
             {
-                listMediaServers.ItemsSource = _upnpService.MediaServers;
+                BindingClass bc = new BindingClass();
+                bc.AliasURL = e.MediaServer.AliasURL;
+                bc.DefaultIconUrl = e.MediaServer.DefaultIconUrl;
+                bc.FriendlyName = "MEDIA SERVER: " + e.MediaServer.DeviceDescription.Device.FriendlyName;
+                bc.PresentationURL = e.MediaServer.PresentationURL;
+                _bindingClass.Add(bc);
+            });
+        }
+
+        private async void _upnpService_OnMediaRendererFound(object sender, UPnPService.MediaRendererFoundEventArgs e)
+        {
+            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, delegate
+            {
+                BindingClass bc = new BindingClass();
+                bc.DefaultIconUrl = e.MediaRenderer.DefaultIconUrl;
+                bc.FriendlyName = "MEDIA RENDERER: " + e.MediaRenderer.DeviceDescription.Device.FriendlyName;
+                bc.PresentationURL = e.MediaRenderer.PresentationURL;
+                _bindingClass.Add(bc);
+            });
+        }
+
+        private async void _upnpService_OnOtherDeviceFound(object sender, UPnPService.OtherDeviceFoundEventArgs e)
+        {
+            await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, delegate
+            {
+                BindingClass bc = new BindingClass();
+                bc.DefaultIconUrl = e.OtherDevice.DefaultIconUrl;
+                bc.FriendlyName = "OTHER DEVICE: " + e.OtherDevice.DeviceDescription.Device.FriendlyName;
+                bc.PresentationURL = e.OtherDevice.PresentationURL;
+                _bindingClass.Add(bc);
             });
         }
 

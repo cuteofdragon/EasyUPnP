@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
 
-namespace EasyUPnP.Server
+namespace EasyUPnP.Common
 {
     public class Content
     {

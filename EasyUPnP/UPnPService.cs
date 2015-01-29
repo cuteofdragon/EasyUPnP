@@ -1,10 +1,9 @@
 ﻿using EasyUPnP.Common;
-using EasyUPnP.Server;
+using EasyUPnP.Device;
 using EasyUPnP.Utils;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Threading;
 using System.Threading.Tasks;
 using Windows.Networking;
 using Windows.Networking.Sockets;
@@ -34,6 +33,26 @@ namespace EasyUPnP
 
             public MediaServer MediaServer { get; set; }
         }
+        public event EventHandler<MediaRendererFoundEventArgs> OnMediaRendererFound;
+        public class MediaRendererFoundEventArgs : EventArgs
+        {
+            public MediaRendererFoundEventArgs(MediaRenderer mediaRenderer)
+            {
+                MediaRenderer = mediaRenderer;
+            }
+
+            public MediaRenderer MediaRenderer { get; set; }
+        }
+        public event EventHandler<OtherDeviceFoundEventArgs> OnOtherDeviceFound;
+        public class OtherDeviceFoundEventArgs : EventArgs
+        {
+            public OtherDeviceFoundEventArgs(OtherDevice otherDevice)
+            {
+                OtherDevice = otherDevice;
+            }
+
+            public OtherDevice OtherDevice { get; set; }
+        }
 
         #endregion
 
@@ -46,6 +65,8 @@ namespace EasyUPnP
         #region Private variables
 
         private Dictionary<string, MediaServer> _mediaServers = new Dictionary<string, MediaServer>();
+        private Dictionary<string, MediaRenderer> _mediaRenderers = new Dictionary<string,MediaRenderer>();
+        private Dictionary<string, OtherDevice> _otherDevices = new Dictionary<string, OtherDevice>();
         private DatagramSocket _socket;
         private DispatcherTimer _upnpListener;
         private DateTime _upnpDiscoveryStart;
@@ -70,6 +91,28 @@ namespace EasyUPnP
                 ObservableCollection<MediaServer> result = new ObservableCollection<MediaServer>();
                 foreach (MediaServer mediaServer in _mediaServers.Values)
                     result.Add(mediaServer);
+
+                return result;
+            }
+        }
+        public ObservableCollection<MediaRenderer> MediaRenderers
+        {
+            get
+            {
+                ObservableCollection<MediaRenderer> result = new ObservableCollection<MediaRenderer>();
+                foreach (MediaRenderer mediaRenderer in _mediaRenderers.Values)
+                    result.Add(mediaRenderer);
+
+                return result;
+            }
+        }
+        public ObservableCollection<OtherDevice> OtherDevices
+        {
+            get
+            {
+                ObservableCollection<OtherDevice> result = new ObservableCollection<OtherDevice>();
+                foreach (OtherDevice otherDevice in _otherDevices.Values)
+                    result.Add(otherDevice);
 
                 return result;
             }
@@ -105,10 +148,8 @@ namespace EasyUPnP
             stream.Dispose();
         }
 
-        public async Task AddOnlineMediaServerAsync(Uri url, CancellationToken ct)
+        public async Task AddOnlineMediaServerAsync(Uri url)
         {
-            if (ct.IsCancellationRequested)
-                return;
             await AddDeviceAsync(url, true);
         }
 
@@ -116,7 +157,7 @@ namespace EasyUPnP
         {
             foreach (string description_url in SupportedOnlineDevices.Items)
             {
-                Uri myUri = new Uri(url.AbsoluteUri + UseSlash(url.AbsoluteUri) + description_url);
+                Uri myUri = new Uri(url.AbsoluteUri + Parser.UseSlash(url.AbsoluteUri) + description_url);
                 if (await Request.RequestUriAsync(myUri) != null)
                     return true;
             }
@@ -151,87 +192,106 @@ namespace EasyUPnP
                     OnUPnPDiscoveryCompleted(sender, null);
             }
         }
-        
+
         private async void _socket_MessageReceived(DatagramSocket sender, DatagramSocketMessageReceivedEventArgs args)
         {
-            try
+            _upnpLastMessageReceived = DateTime.Now;
+
+            DataReader reader = args.GetDataReader();
+
+            uint count = reader.UnconsumedBufferLength;
+            string data = reader.ReadString(count);
+            var response = new Dictionary<string, string>();
+            foreach (string x in data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
             {
-                _upnpLastMessageReceived = DateTime.Now;
-
-                DataReader reader = args.GetDataReader();
-
-                uint count = reader.UnconsumedBufferLength;
-                string data = reader.ReadString(count);
-                var response = new Dictionary<string, string>();
-                foreach (string x in data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
+                if (x.Contains(":"))
                 {
-                    if (x.Contains(":"))
-                    {
-                        string[] strings = x.Split(':');
-                        response.Add(strings[0].ToLower(), x.Remove(0, strings[0].Length + 1));
-                    }
-                }
-
-                if (response.ContainsKey("location"))
-                {
-                    Uri myUri = new Uri(response["location"]);
-                    await AddDeviceAsync(myUri, false);
+                    string[] strings = x.Split(':');
+                    response.Add(strings[0].ToLower(), x.Remove(0, strings[0].Length + 1));
                 }
             }
-            catch
+
+            if (response.ContainsKey("location"))
             {
+                Uri myUri = new Uri(response["location"]);
+                await AddDeviceAsync(myUri, false);
             }
         }
 
         private async Task AddDeviceAsync(Uri aliasUrl, bool is_online_media_server)
         {
-            Uri deviceDescriptionUrl = new Uri(aliasUrl.AbsoluteUri);
-            if (is_online_media_server)
+            try
             {
-                aliasUrl = new Uri(aliasUrl.AbsoluteUri + UseSlash(aliasUrl.AbsoluteUri));
-                deviceDescriptionUrl = await DetectDeviceDescriptionUrlAsync(aliasUrl);
-            }
-            if (deviceDescriptionUrl == null)
-                throw new Exception("Unsopported device: " + aliasUrl.AbsoluteUri);
-
-            DeviceDescription deviceDescription = null;
-            deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
-            if (deviceDescription != null)
-            {
-                switch (deviceDescription.Device.DeviceTypeText)
+                Uri deviceDescriptionUrl = new Uri(aliasUrl.AbsoluteUri);
+                if (is_online_media_server)
                 {
-                    case DeviceTypes.MEDIASERVER:
-                        await AddMediaServerAsync(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
-                        break;
-                    case DeviceTypes.INTERNET_GATEWAY_DEVICE:
-                        //await AddInternetGateWayDeviceAsync();
-                        break;
-                    default:
-                        //await AddOtherDeviceAsync();
-                        break;
+                    aliasUrl = new Uri(aliasUrl.AbsoluteUri + Parser.UseSlash(aliasUrl.AbsoluteUri));
+                    deviceDescriptionUrl = await DetectDeviceDescriptionUrlAsync(aliasUrl);
                 }
+                if (deviceDescriptionUrl == null)
+                    return;
+
+                DeviceDescription deviceDescription = null;
+                deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
+                if (deviceDescription != null)
+                {
+                    switch (deviceDescription.Device.DeviceTypeText)
+                    {
+                        case DeviceTypes.MEDIASERVER:
+                            await AddMediaServerAsync(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
+                            break;
+                        case DeviceTypes.MEDIARENDERER:
+                            await AddMediaRendererAsync(deviceDescription, deviceDescriptionUrl);
+                            break;
+                        default:
+                            AddOtherDevice(deviceDescription, deviceDescriptionUrl);
+                            break;
+                    }
+                }
+            }
+            catch
+            {
             }
         }
 
         private async Task AddMediaServerAsync(DeviceDescription deviceDescription, Uri aliasUrl, Uri deviceDescriptionUrl, bool is_online_media_server)
         {
-            try
-            {
-                string url = deviceDescription != null ? deviceDescriptionUrl.AbsoluteUri : aliasUrl.AbsoluteUri;
-                if (_mediaServers.ContainsKey(url))
-                    return;
+            if (_mediaServers.ContainsKey(deviceDescriptionUrl.AbsoluteUri))
+                return;
 
-                _mediaServers.Add(url, null);
-                MediaServer mediaServer = new MediaServer(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
-                await mediaServer.InitAsync();
-                _mediaServers[url] = mediaServer;
+            _mediaServers.Add(deviceDescriptionUrl.AbsoluteUri, null);
+            MediaServer mediaServer = new MediaServer(deviceDescription, aliasUrl, deviceDescriptionUrl, is_online_media_server);
+            await mediaServer.InitAsync();
+            _mediaServers[deviceDescriptionUrl.AbsoluteUri] = mediaServer;
 
-                if (OnMediaServerFound != null)
-                    OnMediaServerFound(this, new MediaServerFoundEventArgs(mediaServer));
-            }
-            catch
-            {
-            }
+            if (OnMediaServerFound != null)
+                OnMediaServerFound(this, new MediaServerFoundEventArgs(mediaServer));
+        }
+
+        private async Task AddMediaRendererAsync(DeviceDescription deviceDescription, Uri deviceDescriptionUrl)
+        {
+            if (_mediaRenderers.ContainsKey(deviceDescriptionUrl.AbsoluteUri))
+                return;
+
+            _mediaRenderers.Add(deviceDescriptionUrl.AbsoluteUri, null);
+            MediaRenderer mediaRenderer = new MediaRenderer(deviceDescription, deviceDescriptionUrl);
+            await mediaRenderer.InitAsync();
+            _mediaRenderers[deviceDescriptionUrl.AbsoluteUri] = mediaRenderer;
+
+            if (OnMediaRendererFound != null)
+                OnMediaRendererFound(this, new MediaRendererFoundEventArgs(mediaRenderer));
+        }
+
+        private void AddOtherDevice(DeviceDescription deviceDescription, Uri deviceDescriptionUrl)
+        {
+            if (_otherDevices.ContainsKey(deviceDescriptionUrl.AbsoluteUri))
+                return;
+
+            OtherDevice otherDevice = new OtherDevice(deviceDescription, deviceDescriptionUrl);
+            _otherDevices.Add(deviceDescriptionUrl.AbsoluteUri, otherDevice);
+
+            if (OnOtherDeviceFound != null)
+                OnOtherDeviceFound(this, new OtherDeviceFoundEventArgs(otherDevice));
         }
 
         private async Task<Uri> DetectDeviceDescriptionUrlAsync(Uri url)
@@ -243,17 +303,6 @@ namespace EasyUPnP
                     return newUri;
             }
             return null;
-        }
-
-        internal static string UseSlash(string url)
-        {
-            if (string.IsNullOrEmpty(url))
-                return "";
-
-            if (url.Substring(url.Length - 1, 1) != "/")
-                return "/";
-
-            return "";
         }
 
         #endregion

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace EasyUPnP.Server
+namespace EasyUPnP.Device
 {
     public class MediaServer
     {
@@ -52,7 +52,16 @@ namespace EasyUPnP.Server
         }
 
         #endregion
+
+        #region Private variables
+
+        private Dictionary<string, Content> _contents = new Dictionary<string, Content>();
+        private ServiceAction _browseAction;
         
+        #endregion
+
+        #region Constructors
+
         public MediaServer()
         {
         }
@@ -60,8 +69,6 @@ namespace EasyUPnP.Server
         public MediaServer(DeviceDescription deviceDescription, Uri aliasUrl, Uri deviceDescriptionUrl, bool is_online_media_server)
         {
             this.DeviceDescription = deviceDescription;
-            this.FriendlyName = this.DeviceDescription.Device.FriendlyName;
-            this.UDN = this.DeviceDescription.Device.UDN;
             this.AliasURL = aliasUrl.AbsoluteUri;
             this.OnlineServer = is_online_media_server;
 
@@ -70,7 +77,7 @@ namespace EasyUPnP.Server
                 this.PresentationURL = deviceDescriptionUrl.Authority;
                 if (this.PresentationURL.IndexOf("http://") == -1)
                     this.PresentationURL = "http://" + this.PresentationURL;
-                this.PresentationURL = this.PresentationURL + UPnPService.UseSlash(this.PresentationURL);
+                this.PresentationURL = this.PresentationURL + Parser.UseSlash(this.PresentationURL);
             }
             else
             {
@@ -80,13 +87,15 @@ namespace EasyUPnP.Server
                     if (this.DeviceDescription.Device.PresentationURL.IndexOf("http://") == -1)
                         this.DeviceDescription.Device.PresentationURL = "http://" + this.DeviceDescription.Device.PresentationURL;
                 }
-                this.PresentationURL = this.DeviceDescription.Device.PresentationURL + UPnPService.UseSlash(this.DeviceDescription.Device.PresentationURL);
+                this.PresentationURL = this.DeviceDescription.Device.PresentationURL + Parser.UseSlash(this.DeviceDescription.Device.PresentationURL);
             }
         }
 
-        public string UDN { get; private set; }
+        #endregion
+
+        #region Public properties
+
         public string AliasURL { get; private set; }
-        public string FriendlyName { get; private set; }
         public string PresentationURL { get; private set; }
         public string DefaultIconUrl { get; private set; }
         public bool OnlineServer { get; private set; }
@@ -97,9 +106,8 @@ namespace EasyUPnP.Server
         public ContentDirectory ContentDirectory { get; private set; }
         public MediaReceiverRegistrar MediaReceiverRegistrar { get; private set; }
         public Uri ContentDirectoryControlUrl { get; private set; }
-        
-        private ServiceAction _browseAction;
-        private Dictionary<string, Content> _contents = new Dictionary<string,Content>();
+
+        #endregion
 
         #region Public functions
 
@@ -120,7 +128,7 @@ namespace EasyUPnP.Server
                         break;
                 }
 
-            SetIconUrl();
+            SetDefaultIconUrl();
             _browseAction = FindBrowseAction();
             this.Self = this;
         }
@@ -253,7 +261,7 @@ namespace EasyUPnP.Server
 
         #region Private functions
         
-        private void SetIconUrl()
+        private void SetDefaultIconUrl()
         {
             try
             {
