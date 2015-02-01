@@ -153,16 +153,22 @@ namespace EasyUPnP
             await AddDeviceAsync(url, true);
         }
 
-        public static async Task<bool> TestSupportedOnlineDeviceAsync(Uri url)
+        public static async Task<MediaServer> TestSupportedOnlineDeviceAsync(Uri url)
         {
-            foreach (string description_url in SupportedOnlineDevices.Items)
+            try
             {
-                Uri myUri = new Uri(url.AbsoluteUri + Parser.UseSlash(url.AbsoluteUri) + description_url);
-                if (await Request.RequestUriAsync(myUri) != null)
-                    return true;
-            }
+                Uri deviceDescriptionUrl = await DetectDeviceDescriptionUrlAsync(url);
+                if (deviceDescriptionUrl == null)
+                    return null;
 
-            return false;
+                DeviceDescription deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
+                MediaServer mediaServer = new MediaServer(deviceDescription, url, deviceDescriptionUrl, true);
+                return mediaServer;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         #endregion
@@ -231,8 +237,7 @@ namespace EasyUPnP
                 if (deviceDescriptionUrl == null)
                     return;
 
-                DeviceDescription deviceDescription = null;
-                deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
+                DeviceDescription deviceDescription = await Deserializer.DeserializeXmlAsync<DeviceDescription>(deviceDescriptionUrl);
                 if (deviceDescription != null)
                 {
                     switch (deviceDescription.Device.DeviceTypeText)
@@ -294,11 +299,11 @@ namespace EasyUPnP
                 OnOtherDeviceFound(this, new OtherDeviceFoundEventArgs(otherDevice));
         }
 
-        private async Task<Uri> DetectDeviceDescriptionUrlAsync(Uri url)
+        private static async Task<Uri> DetectDeviceDescriptionUrlAsync(Uri url)
         {
             foreach (string description_url in SupportedOnlineDevices.Items)
             {
-                Uri newUri = await Request.RequestUriAsync(new Uri(url.AbsoluteUri + description_url));
+                Uri newUri = await Request.RequestUriAsync(new Uri(url.AbsoluteUri + Parser.UseSlash(url.AbsoluteUri) + description_url));
                 if (newUri != null)
                     return newUri;
             }
